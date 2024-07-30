@@ -21,7 +21,8 @@ import javax.crypto.spec.SecretKeySpec;
 
 /**
  *
- * @author Erik Costlow
+ * @author Rhea D'Souza
+ * @reference https://github.com/PacktPublishing/Hands-On-Cryptography-with-Java/blob/master/src/main/java/com/packtpub/crypto/section5/FileEncryptor.java
  */
 public class FileEncryptor {
     private static final Logger LOG = Logger.getLogger(FileEncryptor.class.getSimpleName());
