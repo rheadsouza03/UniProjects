@@ -33,7 +33,7 @@ public class Part1 {
     public static void main(String[] args) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, InvalidAlgorithmParameterException, IOException {
         // Handling commandline arguments
         if(args.length < 2) {LOG.log(Level.SEVERE, "Input file is required. Cannot perform operation.");}
-        String encOrDec = args[0];
+        String encOrDec = args[0].toLowerCase();
         Map<String, String> arguments = parseArgs(args);
 
         //This snippet is literally copied from SymmetrixExample
@@ -55,6 +55,7 @@ public class Part1 {
         //Perform Encryption or Decryption
         if(encOrDec.equals("enc")) {performEncryption(cipher, iv, skeySpec, arguments);}
         else if(encOrDec.equals("dec")) {performDecryption(cipher, iv, skeySpec, arguments);}
+        else{ LOG.log(Level.SEVERE, "Unrecognized mode. Use 'ENC' for encryption or 'DEC' for decryption");}
     }
 
     /**
