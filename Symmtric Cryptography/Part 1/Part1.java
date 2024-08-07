@@ -21,8 +21,8 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 /**
- *
- * @author Erik Costlow
+ * Commandline based encryption and decryption program
+ * @author Rhea D'Souza
  */
 public class Part1 {
     private static final Logger LOG = Logger.getLogger(Part1.class.getSimpleName());
@@ -64,26 +64,28 @@ public class Part1 {
      * @param iv
      * @param skeySpec
      * @param arguments
-     * @throws IOException
      * @throws InvalidAlgorithmParameterException
      * @throws InvalidKeyException
      */
-    private static void performDecryption(Cipher cipher, IvParameterSpec iv, SecretKeySpec skeySpec, Map<String, String> arguments) throws IOException, InvalidAlgorithmParameterException, InvalidKeyException {
+    private static void performDecryption(Cipher cipher, IvParameterSpec iv, SecretKeySpec skeySpec, Map<String, String> arguments) throws InvalidAlgorithmParameterException, InvalidKeyException {
         cipher.init(Cipher.DECRYPT_MODE, skeySpec, iv);
-        final Path tempDir =Files.createTempDirectory("packt-crypto"); // recently added
-        final Path decryptedPath = tempDir.resolve("1 - Encrypting and Decrypting files_decrypted.pptx");
-        try(InputStream encryptedData = Files.newInputStream(Path.of(arguments.getOrDefault("input-file", null)));
-            CipherInputStream decryptStream = new CipherInputStream(encryptedData, cipher);
-            OutputStream decryptedOut = Files.newOutputStream(Path.of(arguments.getOrDefault("output-file", null)))){
-            final byte[] bytes = new byte[1024];
-            for(int length=decryptStream.read(bytes); length!=-1; length = decryptStream.read(bytes)){
+
+        Path inputPath = Paths.get(arguments.getOrDefault("input-file", null));
+        Path outputPath = Paths.get(arguments.getOrDefault("output-file", inputPath.toString().replace(".enc", ".dec")));
+
+        try (InputStream encryptedData = Files.newInputStream(inputPath);
+             CipherInputStream decryptStream = new CipherInputStream(encryptedData, cipher);
+             OutputStream decryptedOut = Files.newOutputStream(outputPath)) {
+            byte[] bytes = new byte[1024];
+            int length;
+            while ((length = decryptStream.read(bytes)) != -1) {
                 decryptedOut.write(bytes, 0, length);
             }
         } catch (IOException ex) {
-            Logger.getLogger(Part1.class.getName()).log(Level.SEVERE, "Unable to decrypt", ex);
+            LOG.log(Level.SEVERE, "Unable to decrypt", ex);
         }
 
-        LOG.info("Decryption complete, open " + decryptedPath);
+        LOG.info("Decryption complete, saved at " + outputPath);
     }
 
     /**
@@ -92,30 +94,28 @@ public class Part1 {
      * @param iv
      * @param skeySpec
      * @param arguments
-     * @throws IOException
      * @throws InvalidAlgorithmParameterException
      * @throws InvalidKeyException
      */
-    private static void performEncryption(Cipher cipher, IvParameterSpec iv, SecretKeySpec skeySpec, Map<String, String> arguments) throws IOException, InvalidAlgorithmParameterException, InvalidKeyException {
+    private static void performEncryption(Cipher cipher, IvParameterSpec iv, SecretKeySpec skeySpec, Map<String, String> arguments) throws InvalidAlgorithmParameterException, InvalidKeyException {
         cipher.init(Cipher.ENCRYPT_MODE, skeySpec, iv);
 
-        //Look for files here
-        final Path tempDir = Files.createTempDirectory("packt-crypto");
+        Path inputPath = Paths.get(arguments.getOrDefault("input-file", null));
+        Path outputPath = Paths.get(arguments.getOrDefault("output-file", inputPath.toString() + ".enc"));
 
-        final Path encryptedPath = tempDir.resolve("1 - Encrypting and Decrypting files.pptx.encrypted");
-        try (InputStream fin = Part1.class.getResourceAsStream("1 - Encrypting and Decrypting files.pptx");
-             OutputStream fout = Files.newOutputStream(Path.of(arguments.getOrDefault("output-file", null)));
-             CipherOutputStream cipherOut = new CipherOutputStream(fout, cipher) {
-             }) {
-            final byte[] bytes = new byte[1024];
-            for(int length=fin.read(bytes); length!=-1; length = fin.read(bytes)){
+        try (InputStream fin = Files.newInputStream(inputPath);
+             OutputStream fout = Files.newOutputStream(outputPath);
+             CipherOutputStream cipherOut = new CipherOutputStream(fout, cipher)) {
+            byte[] bytes = new byte[1024];
+            int length;
+            while ((length = fin.read(bytes)) != -1) {
                 cipherOut.write(bytes, 0, length);
             }
         } catch (IOException e) {
-            LOG.log(Level.INFO, "Unable to encrypt", e);
+            LOG.log(Level.SEVERE, "Unable to encrypt", e);
         }
 
-        LOG.info("Encryption finished, saved at " + encryptedPath);
+        LOG.info("Encryption finished, saved at " + outputPath);
     }
 
     /**
