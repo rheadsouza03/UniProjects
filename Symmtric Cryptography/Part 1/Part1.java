@@ -44,12 +44,9 @@ public class Part1 {
                                       getOrCreateIv(arguments, sr):null;
 
         // Check to ensure decryption operation has a key and iv specified
-        if(iv==null && skeySpec==null){
-            LOG.log(Level.SEVERE, "Decryption requirement not met. No initialisation-vector and key specified.");
-        }else if(iv==null) {
-            LOG.log(Level.SEVERE, "Decryption requirement not met. No initialisation-vector specified.");
-        } else if (skeySpec==null) {
-            LOG.log(Level.SEVERE, "Decryption requirement not met. No key specified.");
+        if (encOrDec.equals("dec") && (skeySpec == null || iv == null)) {
+            LOG.log(Level.SEVERE, "Decryption requirement not met. No initialisation-vector and/or key specified.");
+            return;
         }
 
         // Gets mode of Cipher
