@@ -97,6 +97,7 @@ public class Part2 {
             IvParameterSpec iv = new IvParameterSpec(generateRandomIV());
 
             // Informs user of the generated key and iv
+            System.out.println("Key length: " + skeySpec.getEncoded().length + " bytes");
             System.out.println("Generated Salt: " + Base64.getEncoder().encodeToString(salt));
             System.out.println("Generated IV: " + Base64.getEncoder().encodeToString(iv.getIV()));
 
@@ -121,7 +122,7 @@ public class Part2 {
     private static SecretKeySpec getKeyFromPassword(String password, byte[] salt){
         byte[] key = new byte[KEY_LENGTH];
         try {
-            KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, ITERATIONS, KEY_LENGTH);
+            KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, ITERATIONS, KEY_LENGTH*8);
             SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
             key = factory.generateSecret(spec).getEncoded();
         }
