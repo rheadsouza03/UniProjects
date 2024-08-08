@@ -1,3 +1,4 @@
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -13,6 +14,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
 import javax.crypto.CipherOutputStream;
@@ -33,8 +36,6 @@ public class Part1 {
     private static final String ALGORITHM = "AES";
     private static final String CIPHER = "AES/CBC/PKCS5PADDING";
     private static final int GCM_TAG_LENGTH = 128;
-    private static int ivIncrement = 0;
-    private static int keyIncrement = 0;
 
     public static void main(String[] args){
         // Handling commandline arguments
@@ -123,7 +124,7 @@ public class Part1 {
             exit(1);
         }
 
-        LOG.info("Decryption complete, saved at " + outputPath);
+        LOG.info("Decryption complete, saved at " + outputPath + "\n\n");
     }
 
     /**
@@ -167,7 +168,7 @@ public class Part1 {
             exit(1);
         }
 
-        LOG.info("Encryption completed, saved at " + outputPath);
+        LOG.info("Encryption completed, saved at " + outputPath + "\n\n");
     }
 
     /**
@@ -194,8 +195,8 @@ public class Part1 {
         } else {
             sr.nextBytes(key); // 128 bit key
             System.out.println("Random key=" + Util.bytesToHex(key));
+            int keyIncrement = getMaxIncrement("key");
             saveBase64File(key, "key"+((keyIncrement==0)?"":keyIncrement)+".base64");
-            ++keyIncrement;
         }
 
         return new SecretKeySpec(key, ALGORITHM);
@@ -226,11 +227,40 @@ public class Part1 {
         } else {
             sr.nextBytes(initVector); // 16 bytes IV
             System.out.println("Random initVector=" + Util.bytesToHex(initVector));
+            int ivIncrement = getMaxIncrement("iv");
             saveBase64File(initVector, "iv"+((ivIncrement==0)?"":ivIncrement)+".base64");
-            ++ivIncrement;
         }
 
         return new IvParameterSpec(initVector);
+    }
+
+    private static int getMaxIncrement(String prefix) {
+        File directory = new File(".");
+        File[] files = directory.listFiles((_, name) -> name.startsWith(prefix) && name.endsWith(".base64"));
+
+        if (files == null || files.length == 0) {
+            return 0;
+        }
+
+        Pattern pattern = Pattern.compile("^"+prefix + "(\\d*)" + "\\.base64$");
+        int maxIncrement = -1;
+
+        for (File file : files) {
+            Matcher matcher = pattern.matcher(file.getName());
+            if (matcher.matches()) {
+                String match = matcher.group(1);
+                if(match.equals("")){
+                    maxIncrement = 0;
+                    continue;
+                }
+                int increment = Integer.parseInt(match);
+                if (increment > maxIncrement) {
+                    maxIncrement = increment;
+                }
+            }
+        }
+
+        return maxIncrement+1;
     }
 
     /**
