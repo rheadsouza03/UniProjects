@@ -2,7 +2,7 @@
 This is a command-line encryption/decryption program. Must be compiled and run using command-line arguments.
 
 ## Command structure:
-Compile using: `javac Part1`
+Compile using: `javac Part1`. 
 Command-line argument: `java Part1 `+ (`enc`||`dec`) + [OPTIONS]
 Note: 'enc' and 'dec' are not case-sensitive
 
