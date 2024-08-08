@@ -46,6 +46,8 @@ public class Part1 {
         String encOrDec = args[0].toLowerCase();
         Map<String, String> arguments = parseArgs(args);
 
+        System.out.println("\n====================================\nStarting "+ encOrDec+"ryption processes:\n====================================");
+
         //This snippet is literally copied from SymmetrixExample
         SecureRandom sr = new SecureRandom();
         SecretKeySpec skeySpec = (arguments.containsKey("key")||encOrDec.equals("enc"))?
@@ -107,9 +109,11 @@ public class Part1 {
             LOG.log(Level.SEVERE, "Invalid algorithm. Cannot be used for decryption of this file.");
             exit(1);
         }
-        Path inputPath = Paths.get(arguments.getOrDefault("input-file", null));
-        String outputFile = arguments.getOrDefault("output-file", inputPath.toString().replace(".enc", ""));
-        Path outputPath = Paths.get(((outputFile.endsWith(".dec"))?outputFile:(outputFile+".dec")));
+
+        String inputFile = arguments.getOrDefault("input-file", null);
+        Path inputPath = Paths.get("data/"+inputFile);
+        String outputFile = arguments.getOrDefault("output-file", inputFile.replace(".enc", ""));
+        Path outputPath = Paths.get("data/"+((outputFile.endsWith(".dec"))?outputFile:(outputFile+".dec")));
 
         try (InputStream encryptedData = Files.newInputStream(inputPath);
              CipherInputStream decryptStream = new CipherInputStream(encryptedData, cipher);
@@ -124,7 +128,7 @@ public class Part1 {
             exit(1);
         }
 
-        LOG.info("Decryption complete, saved at " + outputPath + "\n\n");
+        LOG.info("Decryption complete, saved at " + outputPath + "\n");
     }
 
     /**
@@ -150,9 +154,10 @@ public class Part1 {
             exit(1);
         }
 
-        Path inputPath = Paths.get(arguments.getOrDefault("input-file", null));
-        String outputFile = arguments.getOrDefault("output-file", inputPath.toString());
-        Path outputPath = Paths.get(((outputFile.endsWith(".enc"))?outputFile:(outputFile+".enc")));
+        String inputFile = arguments.getOrDefault("input-file", null);
+        Path inputPath = Paths.get("data/"+inputFile);
+        String outputFile = arguments.getOrDefault("output-file", inputFile);
+        Path outputPath = Paths.get("data/"+((outputFile.endsWith(".enc"))?outputFile:(outputFile+".enc")));
 
         try (InputStream fin = Files.newInputStream(inputPath);
              OutputStream fout = Files.newOutputStream(outputPath);
@@ -167,7 +172,7 @@ public class Part1 {
             exit(1);
         }
 
-        LOG.info("Encryption completed, saved at " + outputPath + "\n\n");
+        LOG.info("Encryption completed, saved at " + outputPath + "\n");
     }
 
     /**
@@ -179,7 +184,7 @@ public class Part1 {
     private static SecretKeySpec getOrCreateKey(Map<String, String> arguments, SecureRandom sr){
         byte[] key = new byte[16]; // Default key size
         if (arguments.containsKey("key")) {
-            Path keyPath = Paths.get(arguments.get("key"));
+            Path keyPath = Paths.get("data/"+arguments.get("key"));
             try {
                 key = Base64.getDecoder().decode(Files.readAllBytes(keyPath));
             } catch (IOException e) {
@@ -210,7 +215,7 @@ public class Part1 {
     private static IvParameterSpec getOrCreateIv(Map<String, String> arguments, SecureRandom sr) {
         byte[] initVector = new byte[16];
         if (arguments.containsKey("initialisation-vector")) {
-            Path ivPath = Paths.get(arguments.get("initialisation-vector"));
+            Path ivPath = Paths.get("data/"+arguments.get("initialisation-vector"));
             try {
                 initVector = Base64.getDecoder().decode(Files.readAllBytes(ivPath));
             } catch (IOException e) {
@@ -240,7 +245,7 @@ public class Part1 {
      * @return Integer related to the number of files with the given prefix in the current directory
      */
     private static int getMaxIncrement(String prefix) {
-        File directory = new File(".");
+        File directory = new File("./data/");
         File[] files = directory.listFiles((_, name) -> name.startsWith(prefix) && name.endsWith(".base64"));
 
         if (files == null || files.length == 0) {
@@ -270,7 +275,7 @@ public class Part1 {
      * @param filename - Name of file data is saved to
      */
     private static void saveBase64File(byte[] data, String filename) {
-        try {Files.write(Paths.get(filename), Base64.getEncoder().encode(data));}
+        try {Files.write(Paths.get("data/"+filename), Base64.getEncoder().encode(data));}
         catch (IOException e) {
             LOG.log(Level.SEVERE, "Unable to save data to "+filename);
             exit(1);
