@@ -85,13 +85,13 @@ public class Part1 {
     }
 
     /**
-     *
-     * @param cipher
-     * @param iv
-     * @param skeySpec
-     * @param arguments
-     * @throws InvalidAlgorithmParameterException
-     * @throws InvalidKeyException
+     * Decrypts the given encrypted file with the iv and key that is provided.
+     * Saves to given file with ending suffix `.dec`, if output file not provided,
+     * the input file is used for it's naming.
+     * @param cipher - Cipher instance used to perform decryption
+     * @param iv - Initialisation-vector that was mandatory to provide
+     * @param skeySpec - Key that was mandatory to provide
+     * @param arguments - Commandline arguments mapped to their keywords
      */
     private static void performDecryption(Cipher cipher, IvParameterSpec iv, SecretKeySpec skeySpec, Map<String, String> arguments, String cipherMode){
         try {
@@ -128,13 +128,12 @@ public class Part1 {
     }
 
     /**
-     *
-     * @param cipher
-     * @param iv
-     * @param skeySpec
-     * @param arguments
-     * @throws InvalidAlgorithmParameterException
-     * @throws InvalidKeyException
+     * Encrypts the input-file and saves the ciphertext to the given output file.
+     * Otherwise, creates an output file using the input file as its prefix.
+     * @param cipher - Cipher instance for encryption
+     * @param iv - Initialisation vector
+     * @param skeySpec - Secret key spec
+     * @param arguments - Commandline arguments mapped to their keywords
      */
     private static void performEncryption(Cipher cipher, IvParameterSpec iv, SecretKeySpec skeySpec, Map<String, String> arguments, String cipherMode){
         try {
@@ -173,9 +172,9 @@ public class Part1 {
 
     /**
      * Gets the provided key, if present. Otherwise, randomly generates a key.
-     * @param arguments - a map of the command-line arguments
-     * @param sr - the secure random instance
-     * @return the secret key spec is returned.
+     * @param arguments - A map of the command-line arguments
+     * @param sr - The secure random instance
+     * @return The secret key spec is returned.
      */
     private static SecretKeySpec getOrCreateKey(Map<String, String> arguments, SecureRandom sr){
         byte[] key = new byte[16]; // Default key size
@@ -204,9 +203,9 @@ public class Part1 {
 
     /**
      * Gets the specified initialisation-vector (IV), if present. Otherwise, randomly generates an IV.
-     * @param arguments - map of commandline arguments
-     * @param sr - secure random instance
-     * @return iv parameter of the random generation or specified key is returned
+     * @param arguments - Map of commandline arguments
+     * @param sr - Secure random instance
+     * @return IV parameter of the random generation or specified key is returned
      */
     private static IvParameterSpec getOrCreateIv(Map<String, String> arguments, SecureRandom sr) {
         byte[] initVector = new byte[16];
@@ -234,6 +233,12 @@ public class Part1 {
         return new IvParameterSpec(initVector);
     }
 
+    /**
+     * Looks through the .base64 files in the directory with the matching prefix. Aims to find a pattern match and
+     * use the number in the file to determine the next increment for a new .base64 file.
+     * @param prefix - "key" or "iv" prefix to the
+     * @return Integer related to the number of files with the given prefix in the current directory
+     */
     private static int getMaxIncrement(String prefix) {
         File directory = new File(".");
         File[] files = directory.listFiles((_, name) -> name.startsWith(prefix) && name.endsWith(".base64"));
@@ -242,17 +247,13 @@ public class Part1 {
             return 0;
         }
 
-        Pattern pattern = Pattern.compile("^"+prefix + "(\\d*)" + "\\.base64$");
-        int maxIncrement = -1;
+        Pattern pattern = Pattern.compile("^"+prefix + "(\\d+)" + "\\.base64$");
+        int maxIncrement = 0;
 
         for (File file : files) {
             Matcher matcher = pattern.matcher(file.getName());
             if (matcher.matches()) {
                 String match = matcher.group(1);
-                if(match.equals("")){
-                    maxIncrement = 0;
-                    continue;
-                }
                 int increment = Integer.parseInt(match);
                 if (increment > maxIncrement) {
                     maxIncrement = increment;
@@ -265,8 +266,8 @@ public class Part1 {
 
     /**
      * Creates a Base64 file by converting the given byte data. Data is saved to a file with the given filename.
-     * @param data - byte data that is to be converted to base64 and saved
-     * @param filename - name of file data is saved to
+     * @param data - Byte data that is to be converted to base64 and saved
+     * @param filename - Name of file data is saved to
      */
     private static void saveBase64File(byte[] data, String filename) {
         try {Files.write(Paths.get(filename), Base64.getEncoder().encode(data));}
@@ -279,8 +280,8 @@ public class Part1 {
 
     /**
      * Takes and saves the command line args in a map using their more descriptive keywords.
-     * @param args - commandline arguments
-     * @return map of command line arguments
+     * @param args - Commandline arguments
+     * @return Map of command line arguments
      */
     private static Map<String, String> parseArgs(String[] args) {
         Map<String, String> params = new HashMap<>();
