@@ -1,7 +1,5 @@
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -12,7 +10,6 @@ import javax.crypto.*;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import javax.crypto.spec.PBEKeySpec;
-import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.logging.Level;
@@ -104,8 +101,8 @@ public class Part2 {
 
             // Informs user of the generated key and iv
             System.out.println("Key length: " + skeySpec.getEncoded().length + " bytes");
-            System.out.println("Generated Salt: " + Base64.getEncoder().encodeToString(salt));
-            System.out.println("Generated IV: " + Base64.getEncoder().encodeToString(iv.getIV()));
+            System.out.println("Generated Salt: " + Util.bytesToHex(salt));
+            System.out.println("Generated IV: " + Util.bytesToHex((iv.getIV())));
 
             // Performs encryption
             performEncryption(cipher, salt, skeySpec, iv, inputFile, outputFile);
