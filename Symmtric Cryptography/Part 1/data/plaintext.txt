@@ -1,1 +1,1 @@
-I went to the beach last year.
+This is an example plaintext file used to test the encryption and decryption with a password for Part 1 of this assignment.
