@@ -240,7 +240,7 @@ public class Part2 {
 
         // Extract the ciphertext (remaining bytes after the IV)
         byte[] ciphertext = new byte[fileContent.length - IV_LENGTH - SALT_LENGTH];
-        System.arraycopy(fileContent, IV_LENGTH, ciphertext, 0, ciphertext.length);
+        System.arraycopy(fileContent, SALT_LENGTH + IV_LENGTH, ciphertext, 0, ciphertext.length);
 
         // Initialise the Cipher instance to decryption mode with key and iv params
         try {cipher.init(Cipher.DECRYPT_MODE, skeySpec, iv);}

@@ -1,1 +1,1 @@
-S|a‡åeJ—ıX¸,û3™·P¿im›n³S18ä\ÙÌj}œÆ8ÎÎûQ’
+This is an example plaintext file used to test the encryption and decryption with a password for Part 2 of this assignment.
