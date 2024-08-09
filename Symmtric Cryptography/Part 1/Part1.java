@@ -298,7 +298,10 @@ public class Part1 {
                     case "--mode", "-m" -> "mode";
                     case "--initialisation-vector", "-iv" -> "initialisation-vector";
                     case "--key-file", "-k" -> "key";
-                    default -> null;
+                    default -> {
+                        LOG.severe("Unrecognized argument: " + args[i]) ;
+                        exit(1);
+                    }
                 };
                 String value = args[i + 1];
                 params.put(key, value);

@@ -12,7 +12,9 @@ import javax.crypto.*;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import javax.crypto.spec.PBEKeySpec;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -43,23 +45,27 @@ public class Part2 {
         String outputFile = null;
 
         // Parsing command-line arguments
+        List<String> options = List.of("-p", "--pass", "-i", "--input-file", "-o", "--output-file");
         for (int i = 1; i < args.length; i++) {
-            switch (args[i]) {
-                case "-p":
-                case "--pass":
-                    password = args[++i];
-                    break;
-                case "-i":
-                case "--input-file":
-                    inputFile = args[++i];
-                    break;
-                case "-o":
-                case "--output-file":
-                    outputFile = args[++i];
-                    break;
-                default:
-                    LOG.severe("Unrecognized argument: " + args[i]);
+            if (i + 1 < args.length && options.contains(args[i])) {
+                String current = args[i+1];
+                if(options.contains(current)){
+                    LOG.severe("Invalid argument provided." + args[i] + " and " + current + " are 2 different options.");
                     exit(1);
+                }
+                switch (args[i]) {
+                    case "-p", "--pass" -> password = current;
+                    case "-i", "--input-file"-> inputFile = current;
+                    case "-o", "--output-file"-> outputFile = current;
+                    default -> {
+                        LOG.severe("Unrecognized argument: " + args[i]);
+                        exit(1);
+                    }
+                }
+                ++i;
+            } else {
+                LOG.severe("Argument " + args[i] + " is missing a value.");
+                exit(1);
             }
         }
 
