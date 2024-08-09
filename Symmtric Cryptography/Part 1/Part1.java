@@ -9,9 +9,7 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -290,6 +288,7 @@ public class Part1 {
      */
     private static Map<String, String> parseArgs(String[] args) {
         Map<String, String> params = new HashMap<>();
+        List<String> options = List.of("--input-file", "-i", "--output-file", "-o", "--mode", "-m", "--initialisation-vector", "-iv", "--key-file", "-k");
         for (int i = 1; i < args.length; i += 2) {
             if (i + 1 < args.length) {
                 String key = switch (args[i]) {
@@ -298,12 +297,18 @@ public class Part1 {
                     case "--mode", "-m" -> "mode";
                     case "--initialisation-vector", "-iv" -> "initialisation-vector";
                     case "--key-file", "-k" -> "key";
-                    default -> {
-                        LOG.severe("Unrecognized argument: " + args[i]) ;
-                        exit(1);
-                    }
+                    default -> null;
                 };
+
+                if(key == null){
+                    LOG.severe("Unrecognized argument: " + args[i]);
+                    exit(1);
+                }
                 String value = args[i + 1];
+                if(options.contains(value)){
+                    LOG.severe("Two options provided with no values: \'" + key + "\', and \'" + value + "\'");
+                    exit(1);
+                }
                 params.put(key, value);
             } else {
                 LOG.severe("Argument " + args[i] + " is missing a value.");
