@@ -29,7 +29,7 @@ public class Part1 {
     private static final String ALGORITHM = "AES";
     private static final String CIPHER = "AES/CBC/PKCS5PADDING";
     private static final int GCM_TAG_LENGTH = 128;
-    private static final int KEY_SIZE = 192; // in bits
+    private static final int KEY_SIZE = 128; // in bits
 
     public static void main(String[] args){
         // Handling commandline arguments
