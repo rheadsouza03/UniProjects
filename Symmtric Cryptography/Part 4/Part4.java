@@ -13,6 +13,8 @@ import java.util.Base64;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static java.lang.System.exit;
+
 public class Part4 {
     private static final Logger LOG = Logger.getLogger(Part4.class.getSimpleName());
     private static final String ALGORITHM = "AES";
@@ -21,7 +23,6 @@ public class Part4 {
     private static final int IV_LENGTH = 16; // AES IV length
     private static final int SALT_LENGTH = 16; // Salt length
     private static final int ITERATIONS = 10000; // PBKDF2 iterations
-    private static final String CHARSET = "abcdefghijklmnopqrstuvwxyz"; // Default charset for passwords
 
     public static void main(String[] args) {
         if (args.length != 3) {
@@ -102,18 +103,14 @@ public class Part4 {
     private static String generatePasswords(String charset, char[] password, int position, byte[] salt, byte[] iv, byte[] actualCiphertext) {
         if (position == password.length) {
             String pwd = new String(password);
-            if (testPassword(pwd, salt, iv, actualCiphertext)) {
-                return pwd;
-            }
+            if (testPassword(pwd, salt, iv, actualCiphertext)) {return pwd;}
             return null;
         }
 
         for (char c : charset.toCharArray()) {
             password[position] = c;
             String result = generatePasswords(charset, password, position + 1, salt, iv, actualCiphertext);
-            if (result != null) {
-                return result;
-            }
+            if (result != null) {return result;}
         }
         return null;
     }
@@ -133,15 +130,21 @@ public class Part4 {
         }
     }
 
-    private static SecretKeySpec getKeyFromPassword(String password, byte[] salt) {
+    /**
+     * Generate a secret key using the provided salt and password.
+     * @param password - inputted password given by the user
+     * @param salt - randomly generated salt
+     * @return Resulting secret key of the provided salt and password
+     */
+    private static SecretKeySpec getKeyFromPassword(String password, byte[] salt){
         byte[] key = new byte[KEY_LENGTH];
         try {
-            KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, ITERATIONS, KEY_LENGTH * 8);
+            KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, ITERATIONS, KEY_LENGTH*8);
             SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
             key = factory.generateSecret(spec).getEncoded();
         } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
-            LOG.log(Level.SEVERE, "Error while generating key.", e);
-            System.exit(1);
+            LOG.log(Level.SEVERE, "Error while generating key.");
+            exit(1);
         }
         return new SecretKeySpec(key, ALGORITHM);
     }
