@@ -1,10 +1,8 @@
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -14,10 +12,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import javax.crypto.Cipher;
-import javax.crypto.CipherInputStream;
-import javax.crypto.CipherOutputStream;
-import javax.crypto.NoSuchPaddingException;
+import javax.crypto.*;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -29,11 +24,12 @@ import static java.lang.System.exit;
  * @author Rhea D'Souza
  */
 public class Part3 {
-    private static final Logger LOG = Logger.getLogger(Part1.class.getSimpleName());
+    private static final Logger LOG = Logger.getLogger(Part3.class.getSimpleName());
 
     private static final String ALGORITHM = "AES";
     private static final String CIPHER = "AES/CBC/PKCS5PADDING";
     private static final int GCM_TAG_LENGTH = 128;
+    private static final int KEY_SIZE = 192; // in bits
 
     public static void main(String[] args){
         // Handling commandline arguments
@@ -113,16 +109,25 @@ public class Part3 {
         String outputFile = arguments.getOrDefault("output-file", inputFile.replace(".enc", ""));
         Path outputPath = Paths.get("data/"+((outputFile.endsWith(".dec"))?outputFile:(outputFile+".dec")));
 
-        try (InputStream encryptedData = Files.newInputStream(inputPath);
-             CipherInputStream decryptStream = new CipherInputStream(encryptedData, cipher);
-             OutputStream decryptedOut = Files.newOutputStream(outputPath)) {
-            byte[] bytes = new byte[1024];
-            int length;
-            while ((length = decryptStream.read(bytes)) != -1) {
-                decryptedOut.write(bytes, 0, length);
-            }
-        } catch (IOException ex) {
-            LOG.log(Level.SEVERE, "Unable to decrypt", ex);
+        byte[] ciphertext = new byte[1024];
+        try{
+            // Decrypting: ciphertext -> plaintext
+            ciphertext = cipher.doFinal(Files.readAllBytes(inputPath));
+
+            // Begin writing to file
+            ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+            byteStream.write(ciphertext);
+            byte[] finalOutput = byteStream.toByteArray();
+            Files.write(outputPath, finalOutput);
+
+        } catch (IllegalBlockSizeException e) {
+            LOG.severe("Unable to decrypt: Illegal block size. Cannot perform encryption.");
+            exit(1);
+        } catch (BadPaddingException e) {
+            LOG.severe("Unable to decrypt: Bad padding. Cannot perform encryption.");
+            exit(1);
+        }catch (IOException e) {
+            LOG.severe("Unable to decrypt: Error occurred when reading or writing to a file.");
             exit(1);
         }
 
@@ -157,16 +162,25 @@ public class Part3 {
         String outputFile = arguments.getOrDefault("output-file", inputFile);
         Path outputPath = Paths.get("data/"+((outputFile.endsWith(".enc"))?outputFile:(outputFile+".enc")));
 
-        try (InputStream fin = Files.newInputStream(inputPath);
-             OutputStream fout = Files.newOutputStream(outputPath);
-             CipherOutputStream cipherOut = new CipherOutputStream(fout, cipher)) {
-            byte[] bytes = new byte[1024];
-            int length;
-            while ((length = fin.read(bytes)) != -1) {
-                cipherOut.write(bytes, 0, length);
-            }
-        } catch (IOException e) {
-            LOG.log(Level.SEVERE, "Unable to encrypt", e);
+        byte[] ciphertext = null;
+        try{
+            // Encrypting: plaintext -> ciphertext
+            ciphertext = cipher.doFinal(Files.readAllBytes(inputPath));
+
+            // Begin writing to file
+            ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+            byteStream.write(ciphertext);
+            byte[] finalOutput = byteStream.toByteArray();
+            Files.write(outputPath, finalOutput);
+
+        } catch (IllegalBlockSizeException e) {
+            LOG.severe("Unable to encrypt: Illegal block size. Cannot perform encryption.");
+            exit(1);
+        } catch (BadPaddingException e) {
+            LOG.severe("Unable to encrypt: Bad padding. Cannot perform encryption.");
+            exit(1);
+        }catch (IOException e) {
+            LOG.severe("Unable to encrypt: Error occurred when reading or writing to a file.");
             exit(1);
         }
 
@@ -180,7 +194,7 @@ public class Part3 {
      * @return The secret key spec is returned.
      */
     private static SecretKeySpec getOrCreateKey(Map<String, String> arguments, SecureRandom sr){
-        byte[] key = new byte[16]; // Default key size
+        byte[] key = new byte[(int)(KEY_SIZE/8)]; // Default key size
         if (arguments.containsKey("key")) {
             Path keyPath = Paths.get("data/"+arguments.get("key"));
             try {
@@ -317,4 +331,27 @@ public class Part3 {
         }
         return params;
     }
+
+    private static void savePerformanceMetrics(String operation, String cipherMode, Map<String, String> arguments, long duration) {
+        String csvFile = "results.csv";
+        String inputFile = arguments.getOrDefault("input-file", "unknown");
+        String keyLength = null;
+        try {
+            keyLength = arguments.containsKey("key") ? String.valueOf(Base64.getDecoder().decode(Files.readAllBytes(Paths.get("data/" + arguments.get("key")))).length * 8) : "unknown";
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        String mode = cipherMode;
+        String fileSize = String.valueOf(new File("data/" + inputFile).length());
+
+        String entry = String.format("%s,%s,%s,%s,%d\n", operation, mode, fileSize, keyLength, duration);
+
+        try {
+            Files.write(Paths.get(csvFile), entry.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        } catch (IOException e) {
+            LOG.log(Level.SEVERE, "Unable to save performance metrics to CSV", e);
+            exit(1);
+        }
+    }
+
 }
