@@ -1,77 +1,148 @@
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import javax.crypto.Cipher;
-import javax.crypto.CipherInputStream;
-import javax.crypto.CipherOutputStream;
-import javax.crypto.NoSuchPaddingException;
+import java.nio.file.Paths;
+import java.security.*;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.KeySpec;
+import javax.crypto.*;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import javax.crypto.spec.PBEKeySpec;
+import java.util.Base64;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-/**
- *
- * @author Erik Costlow
- */
 public class Part4 {
     private static final Logger LOG = Logger.getLogger(Part4.class.getSimpleName());
-
     private static final String ALGORITHM = "AES";
     private static final String CIPHER = "AES/CBC/PKCS5PADDING";
+    private static final int KEY_LENGTH = 16; // AES key length
+    private static final int IV_LENGTH = 16; // AES IV length
+    private static final int SALT_LENGTH = 16; // Salt length
+    private static final int ITERATIONS = 10000; // PBKDF2 iterations
+    private static final String CHARSET = "abcdefghijklmnopqrstuvwxyz"; // Default charset for passwords
 
-    public static void main(String[] args) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, InvalidAlgorithmParameterException, IOException {
+    public static void main(String[] args) {
+        if (args.length != 3) {
+            LOG.severe("Usage: java Part4 <ciphertext-file> -t <type>");
+            System.exit(1);
+        }
 
-        //This snippet is literally copied from SymmetrixExample
-        SecureRandom sr = new SecureRandom();
-        byte[] key = new byte[16];
-        sr.nextBytes(key); // 128 bit key
-        byte[] initVector = new byte[16];
-        sr.nextBytes(initVector); // 16 bytes IV
-        System.out.println("Random key=" + Util.bytesToHex(key));
-        System.out.println("initVector=" + Util.bytesToHex(initVector));
-        IvParameterSpec iv = new IvParameterSpec(initVector);
-        SecretKeySpec skeySpec = new SecretKeySpec(key, ALGORITHM);
-        Cipher cipher = Cipher.getInstance(CIPHER);
-        cipher.init(Cipher.ENCRYPT_MODE, skeySpec, iv);
+        String ciphertextFile = args[0];
+        int type = Integer.parseInt(args[2]);
 
-        //Look for files here
-        final Path tempDir = Files.createTempDirectory("packt-crypto");
+        // Set charset based on the type
+        String charset;
+        switch (type) {
+            case 0:
+                charset = "abcdefghijklmnopqrstuvwxyz";
+                break;
+            case 1:
+                charset = "abcdefghijklmnopqrstuvwxyz0123456789";
+                break;
+            case 2:
+                charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+                break;
+            default:
+                LOG.severe("Invalid type. Use 0, 1, or 2.");
+                System.exit(1);
+                return;
+        }
 
-        final Path encryptedPath = tempDir.resolve("1 - Encrypting and Decrypting files.pptx.encrypted");
-        try (InputStream fin = Part4.class.getResourceAsStream("1 - Encrypting and Decrypting files.pptx");
-             OutputStream fout = Files.newOutputStream(encryptedPath);
-             CipherOutputStream cipherOut = new CipherOutputStream(fout, cipher) {
-             }) {
-            final byte[] bytes = new byte[1024];
-            for(int length=fin.read(bytes); length!=-1; length = fin.read(bytes)){
-                cipherOut.write(bytes, 0, length);
+        try {
+            // Read ciphertext
+            System.out.println("========================\nReading ciphertext file: \n========================");
+            Path path = Paths.get(ciphertextFile);
+            byte[] ciphertext = Files.readAllBytes(path);
+
+            // Extract salt and IV from the ciphertext
+            byte[] salt = new byte[SALT_LENGTH];
+            System.arraycopy(ciphertext, 0, salt, 0, SALT_LENGTH);
+            LOG.info("Salt has successfully been read.");
+
+            byte[] ivBytes = new byte[IV_LENGTH];
+            System.arraycopy(ciphertext, SALT_LENGTH, ivBytes, 0, IV_LENGTH);
+            LOG.info("Initialisation vector has successfully been read.");
+
+            byte[] actualCiphertext = new byte[ciphertext.length - SALT_LENGTH - IV_LENGTH];
+            System.arraycopy(ciphertext, SALT_LENGTH + IV_LENGTH, actualCiphertext, 0, actualCiphertext.length);
+            LOG.info("ciphertext has successfully been read.");
+
+            // Brute-force password search
+            LOG.info("Brute-forcing in process...");
+            long startTime = System.currentTimeMillis();
+            String password = bruteForce(charset, salt, ivBytes, actualCiphertext);
+            long endTime = System.currentTimeMillis();
+            float durationMs = endTime - startTime;
+            String formattedDurationMs = String.format("%.2f", durationMs);
+            String formattedDurationSec = String.format("%.2f", (durationMs/1000));
+            LOG.info("Brute-force completed.");
+
+            LOG.info("Brute-force results: ");
+            if (password != null) {
+                System.out.println("    *  Password: "+ password);
+                System.out.println("    *  Password found in " + formattedDurationMs + " ms (" + formattedDurationSec + " secs)");
+            } else {
+                LOG.severe("Password not found.");
             }
         } catch (IOException e) {
-            LOG.log(Level.INFO, "Unable to encrypt", e);
+            LOG.severe("Failed to read ciphertext file.");
+            System.exit(1);
         }
+    }
 
-        LOG.info("Encryption finished, saved at " + encryptedPath);
+    private static String bruteForce(String charset, byte[] salt, byte[] iv, byte[] actualCiphertext) {
+        int maxPasswordLength = 6;
+        char[] password = new char[maxPasswordLength];
 
-        cipher.init(Cipher.DECRYPT_MODE, skeySpec, iv);
-        final Path decryptedPath = tempDir.resolve("1 - Encrypting and Decrypting files_decrypted.pptx");
-        try(InputStream encryptedData = Files.newInputStream(encryptedPath);
-            CipherInputStream decryptStream = new CipherInputStream(encryptedData, cipher);
-            OutputStream decryptedOut = Files.newOutputStream(decryptedPath)){
-            final byte[] bytes = new byte[1024];
-            for(int length=decryptStream.read(bytes); length!=-1; length = decryptStream.read(bytes)){
-                decryptedOut.write(bytes, 0, length);
+        return generatePasswords(charset, password, 0, salt, iv, actualCiphertext);
+    }
+
+    private static String generatePasswords(String charset, char[] password, int position, byte[] salt, byte[] iv, byte[] actualCiphertext) {
+        if (position == password.length) {
+            String pwd = new String(password);
+            if (testPassword(pwd, salt, iv, actualCiphertext)) {
+                return pwd;
             }
-        } catch (IOException ex) {
-            Logger.getLogger(Part4.class.getName()).log(Level.SEVERE, "Unable to decrypt", ex);
+            return null;
         }
 
-        LOG.info("Decryption complete, open " + decryptedPath);
+        for (char c : charset.toCharArray()) {
+            password[position] = c;
+            String result = generatePasswords(charset, password, position + 1, salt, iv, actualCiphertext);
+            if (result != null) {
+                return result;
+            }
+        }
+        return null;
+    }
+
+    private static boolean testPassword(String password, byte[] salt, byte[] iv, byte[] actualCiphertext) {
+        try {
+            Cipher cipher = Cipher.getInstance(CIPHER);
+            SecretKeySpec keySpec = getKeyFromPassword(password, salt);
+
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, new IvParameterSpec(iv));
+            byte[] decryptedText = cipher.doFinal(actualCiphertext);
+
+            // Check if the decrypted text is valid (this might need adjustment based on your ciphertext content)
+            return decryptedText.length > 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static SecretKeySpec getKeyFromPassword(String password, byte[] salt) {
+        byte[] key = new byte[KEY_LENGTH];
+        try {
+            KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, ITERATIONS, KEY_LENGTH * 8);
+            SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+            key = factory.generateSecret(spec).getEncoded();
+        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+            LOG.log(Level.SEVERE, "Error while generating key.", e);
+            System.exit(1);
+        }
+        return new SecretKeySpec(key, ALGORITHM);
     }
 }

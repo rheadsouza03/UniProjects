@@ -216,10 +216,9 @@ public class Part3 {
             }
             System.out.println("Given key=" + Util.bytesToHex(key));
         } else {
-            sr.nextBytes(key); // 128 bit key
+            sr.nextBytes(key); // 128/192/256-bit key
             System.out.println("Random key=" + Util.bytesToHex(key));
-            int keyIncrement = getMaxIncrement("key");
-            saveBase64File(key, "key"+((keyIncrement==0)?"":keyIncrement)+".base64");
+            saveBase64File(key, "key.base64");
         }
 
         return new SecretKeySpec(key, ALGORITHM);
@@ -250,8 +249,7 @@ public class Part3 {
         } else {
             sr.nextBytes(initVector); // 16 bytes IV
             System.out.println("Random initVector=" + Util.bytesToHex(initVector));
-            int ivIncrement = getMaxIncrement("iv");
-            saveBase64File(initVector, "iv"+((ivIncrement==0)?"":ivIncrement)+".base64");
+            saveBase64File(initVector, "iv.base64");
         }
 
         return new IvParameterSpec(initVector);
@@ -260,7 +258,7 @@ public class Part3 {
     /**
      * Looks through the .base64 files in the directory with the matching prefix. Aims to find a pattern match and
      * use the number in the file to determine the next increment for a new .base64 file.
-     * @param prefix - "key" or "iv" prefix to the
+     * @param prefix - file prefix
      * @return Integer related to the number of files with the given prefix in the current directory
      */
     private static int getMaxIncrement(String prefix) {
