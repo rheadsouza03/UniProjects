@@ -10,8 +10,6 @@ import java.security.SecureRandom;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import javax.crypto.*;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
@@ -27,18 +25,27 @@ public class Part3 {
     private static final Logger LOG = Logger.getLogger(Part3.class.getSimpleName());
 
     private static final String ALGORITHM = "AES";
+
     private static final String[] CIPHERS = {
             "AES/CBC/PKCS5Padding",
             "AES/ECB/PKCS5Padding",
-            "AES/GCM/NoPadding",
             "AES/OFB/NoPadding",
-            "AES/CFB/NoPadding"
+            "AES/CFB/NoPadding",
+            "AES/GCM/NoPadding"
     };
-    private static final int GCM_TAG_LENGTH = 128;
     private static final int[] KEY_SIZES = {128, 192, 256}; // in bits
-    private static final String[] INPUT_FILES = {"plaintext.txt", "plaintext2.txt", "plaintext3.txt", "plaintext4.txt", "plaintext5.txt"};
+    private static File[] INPUT_FILES = new File[3];
+    private static final int[] INPUT_FILES_SIZES = {128, 256, 512};
 
+    /**
+     *
+     * @param args
+     */
     public static void main(String[] args){
+        // Creates temporary plaintexts and ensures they get deleted upon JVM shutdown of the program.
+        createTempPlaintexts();
+        Runtime.getRuntime().addShutdownHook(new Thread(Part3::deleteTempPlaintexts));
+
         Map<int[], Double> encryptionDurations = new HashMap<>();
         Map<int[], Double> decryptionDurations = new HashMap<>();
 
@@ -48,7 +55,7 @@ public class Part3 {
                     SecureRandom sr = new SecureRandom();
 
                     // Create random key
-                    byte[] key = new byte[(int)( KEY_SIZES[j] / 8)]; // Default key size
+                    byte[] key = new byte[(int)(KEY_SIZES[j] / 8)]; // Default key size
                     sr.nextBytes(key);
                     SecretKeySpec skeySpec = new SecretKeySpec(key, ALGORITHM);
 
@@ -63,11 +70,9 @@ public class Part3 {
 
                     // Get pre-initialised Cipher instance
                     String cipher = CIPHERS[k];
-                    Cipher cipherEnc = getCipher(cipher, Cipher.ENCRYPT_MODE, skeySpec, iv);
-                    Cipher cipherDec = getCipher(cipher, Cipher.DECRYPT_MODE, skeySpec, iv);
 
                     // Perform multiple iterations of encryption and decryption and collect their durations
-                    double[] iterDurations = getAverageDurations(cipherEnc, cipherDec, INPUT_FILES[i]);
+                    double[] iterDurations = getAverageDurations(skeySpec, INPUT_FILES[i], cipher, sr);
 
                     // Store collected durations
                     encryptionDurations.put(new int[]{i, j, k}, iterDurations[0]);
@@ -75,27 +80,43 @@ public class Part3 {
                 }
             }
         }
+        LOG.info("All average durations have been calculated, successfully. " +
+                         "\nSaving encryption information to 'result.csv' has started...");
+
+        performSavePerformDur("Encryption", encryptionDurations);
+        LOG.info("Encryption durations have successfully been saved. \nSaving decryption information to 'result.csv'....");
+        performSavePerformDur("Decryption", decryptionDurations);
+        LOG.info("Decryption durations have successfully been saved. \nThe result.csv is ready for viewing.");
 
     }
 
     /**
      * Gets the average duration taken to perform encryption and decryption with the given values.
-     * @param cipherEnc - Cipher instance initialised for encryption
-     * @param cipherDec - Cipher instance initialised for encryption
      * @param inputFile - String with the input file name
      * @return Double array with encryption average stored at index 0 and decryption stored in index 1
      */
-    private static double[] getAverageDurations(Cipher cipherEnc, Cipher cipherDec, String inputFile) {
+    private static double[] getAverageDurations(SecretKeySpec skeySpec, File inputFile, String cipherMode, SecureRandom sr) {
         double[] durations = {0, 0};
 
-        for(int i = 0; i < 10; i++){
-            //Perform Encryption and Decryption, and get the summation of their durations
-            durations[0] += performOperation(cipherEnc, inputFile, "encryption");
-            durations[1] += performOperation(cipherDec, inputFile, "decryption");
+        for (int i = 0; i < 10; i++) {
+            // Generate a new IV for each iteration if using GCM mode
+            byte[] initVector = new byte[16];
+            sr.nextBytes(initVector);
+            IvParameterSpec iv = new IvParameterSpec(initVector);
+
+            // Get pre-initialised Cipher instance
+            Cipher cipherEnc = getCipher(cipherMode, Cipher.ENCRYPT_MODE, skeySpec, iv);
+            Cipher cipherDec = getCipher(cipherMode, Cipher.DECRYPT_MODE, skeySpec, iv);
+
+            // Perform encryption and decryption, and get the summation of their durations
+            double[] encAndDecDur = performOperation(cipherEnc, cipherDec, inputFile);
+            durations[0] += encAndDecDur[0];
+            durations[1] += encAndDecDur[1];
         }
 
         durations[0] /= 10;
         durations[1] /= 10;
+        LOG.info("Average durations for " + inputFile + " with cipher " + cipherMode + " have been computed.");
 
         return durations;
     }
@@ -115,8 +136,11 @@ public class Part3 {
             cipher = Cipher.getInstance(cipherMode);
 
             // Initialise that instance based on the type of algorithm used
-            if (cipherMode.contains("GCM")) {cipher.init(operation, skeySpec, new GCMParameterSpec(GCM_TAG_LENGTH, iv.getIV()));}
-            else if (cipherMode.contains("ECB")){cipher.init(operation, skeySpec);}
+            byte[] initVector = iv.getIV();
+            if (cipherMode.equals("AES/GCM/NoPadding")) {
+                cipher.init(operation, skeySpec, new GCMParameterSpec(128, initVector));
+            }
+            else if (cipherMode.equals("AES/ECB/PKCS5Padding")){cipher.init(operation, skeySpec);}
             else {cipher.init(operation, skeySpec, iv);}
 
         } catch (NoSuchAlgorithmException e) {
@@ -141,52 +165,142 @@ public class Part3 {
      * Decrypts the given encrypted file with the iv and key that is provided.
      * Saves to given file with ending suffix `.dec`, if output file not provided,
      * the input file is used for it's naming.
-     * @param cipher - Cipher instance used to perform decryption
+     * @param cipherEnc - Cipher instance used to perform encryption
+     * @param cipherDec - Cipher instance used to perform decryption
      * @param inputFile - file containing the encrypted/ciphertext data
+     * @return Double array containing the duration for encryption and decryption operations to take place.
      */
-    private static double performOperation(Cipher cipher, String inputFile, String operation){
+    private static double[] performOperation(Cipher cipherEnc, Cipher cipherDec, File inputFile){
+        double[] durations = {0,0};
         try {
             // Gets the file path
-            Path inputPath = Paths.get("data/"+inputFile);
+            Path inputPath = inputFile.toPath();
 
-            // Performs encryption/decryption and measures duration
-            double start = System.currentTimeMillis();
-            cipher.doFinal(Files.readAllBytes(inputPath));
-            double end = System.currentTimeMillis();
+            // Performs encryption and measures duration
+            double start = System.nanoTime();
+            byte[] ciphertext = cipherEnc.doFinal(Files.readAllBytes(inputPath));
+            double end = System.nanoTime();
+            durations[0] = (end - start);
 
-            return end - start;
+            // Performs decryption and measures duration
+            start = System.nanoTime();
+            cipherDec.doFinal(ciphertext);
+            end = System.nanoTime();
+            durations[1] = (end - start);
+
+            return durations;
         } catch (IllegalBlockSizeException e) {
-            LOG.severe("Unable to "+operation+": Illegal block size. Cannot perform encryption.");
+            LOG.severe("Unable to perform operation: Illegal block size. Cannot perform encryption.");
             exit(1);
         } catch (BadPaddingException e) {
-            LOG.severe("Unable to "+operation+": Bad padding. Cannot perform encryption.");
+            LOG.severe("Unable to perform operation: Bad padding. Cannot perform encryption.");
             exit(1);
         }catch (IOException e) {
-            LOG.severe("Unable to perform "+operation+": Error occurred when reading or writing to a file.");
+            LOG.severe("Unable to perform operation: Error occurred when reading or writing to a file.");
             exit(1);
         }
 
-        return 0;
+        return null;
     }
 
-    private static int[] getFileSizes(){
-        int[] fileSizes = new int[INPUT_FILES.length];
-        for(int i = 0; i < INPUT_FILES.length; i++){
-            fileSizes[i] = (int) new File("data/"+INPUT_FILES[i]).length();
+    /**
+     * Creates temporary plaintext files for the duration of this program.
+     */
+    private static void createTempPlaintexts() {
+        if (INPUT_FILES[0] != null) {
+            return;
         }
+        LOG.info("Creating temporary plaintext files...");
 
-        return fileSizes;
+        SecureRandom sr = new SecureRandom();
+        try {
+            for (int i = 0; i < INPUT_FILES.length; i++) {
+                // Create a temporary file
+                INPUT_FILES[i] = File.createTempFile(
+                        "plaintext" + (i + 1),
+                        ".txt",
+                        new File(".")
+                );
+
+                // Determine the size of the file
+                int fileSize = INPUT_FILES_SIZES[i]/8; // Convert bits to bytes
+
+                // Create a byte array of the desired size
+                byte[] data = new byte[fileSize];
+                sr.nextBytes(data); // Fill with random data
+
+                // Write the data to the file
+                try (FileOutputStream fos = new FileOutputStream(INPUT_FILES[i])) {
+                    fos.write(data);
+                }
+            }
+            LOG.info("Plaintext files have been created and populated successfully.");
+        } catch (IOException e) {
+            LOG.log(Level.SEVERE, "Error creating or writing to temporary files: " + e.getMessage(), e);
+            throw new RuntimeException(e);
+        }
     }
 
-    private static void savePerformanceMetrics(String operation, byte[] key, String mode, int fileSize, double duration) {
-        String csvFile = "results.csv";
-        String keyLength = Arrays.toString(Base64.getDecoder().decode(key));
-        String entry = String.format("%s,%s,%d,%s,%.2f\n", operation, mode, fileSize, keyLength, duration);
+    /**
+     * Delete the temporary plaintext.txt files.
+     */
+    private static void deleteTempPlaintexts() {
+        for (File file : INPUT_FILES) {
+            if (file != null && file.exists()) {
+                if (!file.delete()) {
+                    LOG.warning("Failed to delete temporary file: " + file.getAbsolutePath());
+                }
+            }
+        }
+    }
 
+    /**
+     * Iterates over the map entries and calls savePerformanceMetrics to save the results to results.csv
+     * @param operation - encryption or decryption operation
+     * @param operationDurations -
+     */
+    private static void performSavePerformDur(String operation, Map<int[], Double> operationDurations) {
+        List<Map.Entry<int[], Double>> sortedEntries = new ArrayList<>(operationDurations.entrySet());
+        sortedEntries.sort((e1, e2) -> {
+            int[] id1 = e1.getKey();
+            int[] id2 = e2.getKey();
+            // First, compare by file size
+            int result = Integer.compare(INPUT_FILES_SIZES[id1[0]], INPUT_FILES_SIZES[id2[0]]);
+            if (result != 0) return result;
+            // Next, compare by key size
+            result = Integer.compare(KEY_SIZES[id1[1]], KEY_SIZES[id2[1]]);
+            if (result != 0) return result;
+            // Finally, compare by mode
+            return CIPHERS[id1[2]].compareTo(CIPHERS[id2[2]]);
+        });
+        // Write the header to the csv file
+        String header = String.format("%s:\nFileSize(bits),KeySize(bits),Mode,Duration(secs)\n", operation);
+        writeToCSV(header.getBytes());
+
+        for(Map.Entry<int[], Double> entry : sortedEntries){
+            int[] id = entry.getKey();
+            // Format data for csv
+            String performanceMetric = String.format(
+                    "%d,%d,%s,%.2f\n",
+                    INPUT_FILES_SIZES[id[0]],
+                    KEY_SIZES[id[1]],
+                    CIPHERS[id[2]].substring(4, 7),
+                    (entry.getValue()/1000)
+            );
+            writeToCSV(performanceMetric.getBytes());
+        }
+        LOG.info("Performed save operation: "+operation);
+    }
+
+    /**
+     * Writes the given data entry into the 'results.csv file'
+     * @param entry - byte array of data to write to the csv file.
+     */
+    private static void writeToCSV(byte[] entry){
         try {
-            Files.write(Paths.get(csvFile), entry.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+            Files.write(Paths.get("results.csv"), entry, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
         } catch (IOException e) {
-            LOG.log(Level.SEVERE, "Unable to save performance metrics to CSV", e);
+            LOG.log(Level.SEVERE, "Unable to save entry to CSV.");
             exit(1);
         }
     }

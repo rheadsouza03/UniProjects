@@ -1,1 +1,0 @@
-This is an example plaintext file used to test the encryption and decryption with a password for Part 3 of this assignment.
