@@ -23,8 +23,8 @@ import static java.lang.System.exit;
  * Commandline based encryption and decryption program
  * @author Rhea D'Souza
  */
-public class Part3 {
-    private static final Logger LOG = Logger.getLogger(Part3.class.getSimpleName());
+public class Part1 {
+    private static final Logger LOG = Logger.getLogger(Part1.class.getSimpleName());
 
     private static final String ALGORITHM = "AES";
     private static final String CIPHER = "AES/CBC/PKCS5PADDING";
