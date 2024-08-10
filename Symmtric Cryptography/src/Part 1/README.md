@@ -3,7 +3,7 @@ This is a command-line encryption/decryption program. Must be compiled and run u
 
 ## Command structure:
 Compile using: `javac Part1`. 
-Command-line argument: `java Part1 `+ (`enc`||`dec`) + [OPTIONS]
+Command-line argument: `java Part1 ` <`enc`||`dec`>  `[OPTIONS]`
 Note: 'enc' and 'dec' are not case-sensitive
 
 ### [OPTIONS]:
@@ -16,3 +16,6 @@ Note: 'enc' and 'dec' are not case-sensitive
  - "-i" && "--input-file": mandatory parameter. For encryption = plaintext, decryption = ciphertext (i.e. encrypted data).
  - "-o" && "--output-file": optional parameter. For encryption = ciphertext (will end with `.enc` if not already), 
     decryption = decrypted data (will end with `.dec` if not already).
+
+References: None, mainly javadocs and StackOverflow. Additionally, used the original encryption code to understand 
+the structure of performing the initialisation and encryption/decryption parts.
