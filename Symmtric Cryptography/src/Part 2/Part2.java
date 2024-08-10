@@ -18,7 +18,7 @@ import static java.lang.System.exit;
 
 /**
  * Password-based encryption/decryption with PBKDF2
- * @author Erik Costlow
+ * @author Rhea D'Souza
  */
 public class Part2 {
     private static final Logger LOG = Logger.getLogger(Part2.class.getSimpleName());

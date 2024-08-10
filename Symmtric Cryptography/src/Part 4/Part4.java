@@ -9,12 +9,14 @@ import javax.crypto.*;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import javax.crypto.spec.PBEKeySpec;
-import java.util.Base64;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static java.lang.System.exit;
 
+/**
+ * @author Rhea D'Souza
+ */
 public class Part4 {
     private static final Logger LOG = Logger.getLogger(Part4.class.getSimpleName());
     private static final String ALGORITHM = "AES";
