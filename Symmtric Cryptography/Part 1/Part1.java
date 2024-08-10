@@ -1,10 +1,8 @@
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -14,10 +12,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import javax.crypto.Cipher;
-import javax.crypto.CipherInputStream;
-import javax.crypto.CipherOutputStream;
-import javax.crypto.NoSuchPaddingException;
+import javax.crypto.*;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -28,12 +23,13 @@ import static java.lang.System.exit;
  * Commandline based encryption and decryption program
  * @author Rhea D'Souza
  */
-public class Part1 {
-    private static final Logger LOG = Logger.getLogger(Part1.class.getSimpleName());
+public class Part3 {
+    private static final Logger LOG = Logger.getLogger(Part3.class.getSimpleName());
 
     private static final String ALGORITHM = "AES";
     private static final String CIPHER = "AES/CBC/PKCS5PADDING";
     private static final int GCM_TAG_LENGTH = 128;
+    private static final int KEY_SIZE = 192; // in bits
 
     public static void main(String[] args){
         // Handling commandline arguments
@@ -51,7 +47,7 @@ public class Part1 {
         SecretKeySpec skeySpec = (arguments.containsKey("key")||encOrDec.equals("enc"))?
                                          getOrCreateKey(arguments, sr):null;
         IvParameterSpec iv = (arguments.containsKey("initialisation-vector")||encOrDec.equals("enc"))?
-                                      getOrCreateIv(arguments, sr):null;
+                                     getOrCreateIv(arguments, sr):null;
 
         // Check to ensure decryption operation has a key and iv specified
         if (encOrDec.equals("dec") && (skeySpec == null || iv == null)) {
@@ -64,14 +60,17 @@ public class Part1 {
         if(cipherMode.equals("GCM") || cipherMode.equals("CFB") || cipherMode.equals("OFB")) {
             cipherMode = "AES/"+cipherMode+"/NoPadding";
         }
+        else if(cipherMode.equals("CBC") || cipherMode.equals("ECB")){
+            cipherMode = "AES/"+cipherMode+"/PKCS5PADDING";
+        }
         Cipher cipher = null;
         try {
             cipher = Cipher.getInstance(cipherMode);
         } catch (NoSuchAlgorithmException e) {
-            LOG.log(Level.SEVERE, "Algorithm not supported: " + cipherMode, e);
+            LOG.log(Level.SEVERE, "Algorithm not supported: " + cipherMode);
             exit(1);
         } catch (NoSuchPaddingException e) {
-            LOG.log(Level.SEVERE, "No such padding: " + cipherMode, e);
+            LOG.log(Level.SEVERE, "No such padding: " + cipherMode);
             exit(1);
         }
 
@@ -97,7 +96,9 @@ public class Part1 {
         try {
             if (cipherMode.contains("GCM")) {
                 cipher.init(Cipher.DECRYPT_MODE, skeySpec, new GCMParameterSpec(GCM_TAG_LENGTH, iv.getIV()));
-            } else {
+            } else if (cipherMode.contains("ECB")){
+                cipher.init(Cipher.DECRYPT_MODE, skeySpec);
+            }else {
                 cipher.init(Cipher.DECRYPT_MODE, skeySpec, iv);
             }
         }catch (InvalidKeyException e) {
@@ -113,16 +114,25 @@ public class Part1 {
         String outputFile = arguments.getOrDefault("output-file", inputFile.replace(".enc", ""));
         Path outputPath = Paths.get("data/"+((outputFile.endsWith(".dec"))?outputFile:(outputFile+".dec")));
 
-        try (InputStream encryptedData = Files.newInputStream(inputPath);
-             CipherInputStream decryptStream = new CipherInputStream(encryptedData, cipher);
-             OutputStream decryptedOut = Files.newOutputStream(outputPath)) {
-            byte[] bytes = new byte[1024];
-            int length;
-            while ((length = decryptStream.read(bytes)) != -1) {
-                decryptedOut.write(bytes, 0, length);
-            }
-        } catch (IOException ex) {
-            LOG.log(Level.SEVERE, "Unable to decrypt", ex);
+        byte[] ciphertext = new byte[1024];
+        try{
+            // Decrypting: ciphertext -> plaintext
+            ciphertext = cipher.doFinal(Files.readAllBytes(inputPath));
+
+            // Begin writing to file
+            ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+            byteStream.write(ciphertext);
+            byte[] finalOutput = byteStream.toByteArray();
+            Files.write(outputPath, finalOutput);
+
+        } catch (IllegalBlockSizeException e) {
+            LOG.severe("Unable to decrypt: Illegal block size. Cannot perform encryption.");
+            exit(1);
+        } catch (BadPaddingException e) {
+            LOG.severe("Unable to decrypt: Bad padding. Cannot perform encryption.");
+            exit(1);
+        }catch (IOException e) {
+            LOG.severe("Unable to decrypt: Error occurred when reading or writing to a file.");
             exit(1);
         }
 
@@ -141,6 +151,8 @@ public class Part1 {
         try {
             if (cipherMode.contains("GCM")) {
                 cipher.init(Cipher.ENCRYPT_MODE, skeySpec, new GCMParameterSpec(GCM_TAG_LENGTH, iv.getIV()));
+            } else if (cipherMode.contains("ECB")){
+                cipher.init(Cipher.ENCRYPT_MODE, skeySpec);
             } else {
                 cipher.init(Cipher.ENCRYPT_MODE, skeySpec, iv);
             }
@@ -157,16 +169,25 @@ public class Part1 {
         String outputFile = arguments.getOrDefault("output-file", inputFile);
         Path outputPath = Paths.get("data/"+((outputFile.endsWith(".enc"))?outputFile:(outputFile+".enc")));
 
-        try (InputStream fin = Files.newInputStream(inputPath);
-             OutputStream fout = Files.newOutputStream(outputPath);
-             CipherOutputStream cipherOut = new CipherOutputStream(fout, cipher)) {
-            byte[] bytes = new byte[1024];
-            int length;
-            while ((length = fin.read(bytes)) != -1) {
-                cipherOut.write(bytes, 0, length);
-            }
-        } catch (IOException e) {
-            LOG.log(Level.SEVERE, "Unable to encrypt", e);
+        byte[] ciphertext = null;
+        try{
+            // Encrypting: plaintext -> ciphertext
+            ciphertext = cipher.doFinal(Files.readAllBytes(inputPath));
+
+            // Begin writing to file
+            ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+            byteStream.write(ciphertext);
+            byte[] finalOutput = byteStream.toByteArray();
+            Files.write(outputPath, finalOutput);
+
+        } catch (IllegalBlockSizeException e) {
+            LOG.severe("Unable to encrypt: Illegal block size. Cannot perform encryption.");
+            exit(1);
+        } catch (BadPaddingException e) {
+            LOG.severe("Unable to encrypt: Bad padding. Cannot perform encryption.");
+            exit(1);
+        }catch (IOException e) {
+            LOG.severe("Unable to encrypt: Error occurred when reading or writing to a file.");
             exit(1);
         }
 
@@ -180,7 +201,7 @@ public class Part1 {
      * @return The secret key spec is returned.
      */
     private static SecretKeySpec getOrCreateKey(Map<String, String> arguments, SecureRandom sr){
-        byte[] key = new byte[16]; // Default key size
+        byte[] key = new byte[(int)(KEY_SIZE/8)]; // Default key size
         if (arguments.containsKey("key")) {
             Path keyPath = Paths.get("data/"+arguments.get("key"));
             try {
@@ -221,7 +242,7 @@ public class Part1 {
                 exit(1);
             }
             if (initVector.length != 16) {
-               LOG.log(Level.SEVERE, "Invalid IV length: " + initVector.length + " bytes. Must be 16 bytes.");
+                LOG.log(Level.SEVERE, "Invalid IV length: " + initVector.length + " bytes. Must be 16 bytes.");
                 exit(1);
             }
             System.out.println("Given initVector=" + Util.bytesToHex(initVector));
@@ -317,4 +338,5 @@ public class Part1 {
         }
         return params;
     }
+
 }

@@ -60,14 +60,17 @@ public class Part3 {
         if(cipherMode.equals("GCM") || cipherMode.equals("CFB") || cipherMode.equals("OFB")) {
             cipherMode = "AES/"+cipherMode+"/NoPadding";
         }
+        else if(cipherMode.equals("CBC") || cipherMode.equals("ECB")){
+            cipherMode = "AES/"+cipherMode+"/PKCS5PADDING";
+        }
         Cipher cipher = null;
         try {
             cipher = Cipher.getInstance(cipherMode);
         } catch (NoSuchAlgorithmException e) {
-            LOG.log(Level.SEVERE, "Algorithm not supported: " + cipherMode, e);
+            LOG.log(Level.SEVERE, "Algorithm not supported: " + cipherMode);
             exit(1);
         } catch (NoSuchPaddingException e) {
-            LOG.log(Level.SEVERE, "No such padding: " + cipherMode, e);
+            LOG.log(Level.SEVERE, "No such padding: " + cipherMode);
             exit(1);
         }
 
@@ -93,7 +96,9 @@ public class Part3 {
         try {
             if (cipherMode.contains("GCM")) {
                 cipher.init(Cipher.DECRYPT_MODE, skeySpec, new GCMParameterSpec(GCM_TAG_LENGTH, iv.getIV()));
-            } else {
+            } else if (cipherMode.contains("ECB")){
+                cipher.init(Cipher.DECRYPT_MODE, skeySpec);
+            }else {
                 cipher.init(Cipher.DECRYPT_MODE, skeySpec, iv);
             }
         }catch (InvalidKeyException e) {
@@ -146,6 +151,8 @@ public class Part3 {
         try {
             if (cipherMode.contains("GCM")) {
                 cipher.init(Cipher.ENCRYPT_MODE, skeySpec, new GCMParameterSpec(GCM_TAG_LENGTH, iv.getIV()));
+            } else if (cipherMode.contains("ECB")){
+                cipher.init(Cipher.ENCRYPT_MODE, skeySpec);
             } else {
                 cipher.init(Cipher.ENCRYPT_MODE, skeySpec, iv);
             }
