@@ -18,7 +18,7 @@ import javax.crypto.spec.SecretKeySpec;
 import static java.lang.System.exit;
 
 /**
- * Commandline based encryption and decryption program
+ * Tests different keys, input file sizes and cipher modes and appends their timings into the results.csv file.
  * @author Rhea D'Souza
  */
 public class Part3 {
@@ -38,20 +38,24 @@ public class Part3 {
     private static final int[] INPUT_FILES_SIZES = {128, 256, 512};
 
     /**
-     *
-     * @param args
+     * Loops through temporarily created input plaintext files, key sizes, and operation modes for encryption
+     * and decryption. The initialises these variable and gets the duration of the 2 operations by performing
+     * encryption and decryption and storing the results in a map. This map is then used to add the relevant
+     * information gained from this testing, to the 'results.csv' file.
+     * @param args - commandline arguments
      */
     public static void main(String[] args){
         // Creates temporary plaintexts and ensures they get deleted upon JVM shutdown of the program.
         createTempPlaintexts();
         Runtime.getRuntime().addShutdownHook(new Thread(Part3::deleteTempPlaintexts));
 
+        // Initialising duration encryption and decryption HashMaps
         Map<int[], Double> encryptionDurations = new HashMap<>();
         Map<int[], Double> decryptionDurations = new HashMap<>();
 
-        for(int i = 0; i < INPUT_FILES.length; i++){
-            for(int j = 0; j < KEY_SIZES.length; j++){
-                for(int k = 0; k < CIPHERS.length; k++){
+        for(int i = 0; i < INPUT_FILES.length; i++){ // Loops through input files
+            for(int j = 0; j < KEY_SIZES.length; j++){ // Loops through key sizes
+                for(int k = 0; k < CIPHERS.length; k++){ // Loops through cipher modes
                     SecureRandom sr = new SecureRandom();
 
                     // Create random key
@@ -207,9 +211,7 @@ public class Part3 {
      * Creates temporary plaintext files for the duration of this program.
      */
     private static void createTempPlaintexts() {
-        if (INPUT_FILES[0] != null) {
-            return;
-        }
+        if (INPUT_FILES[0] != null) {return;}
         LOG.info("Creating temporary plaintext files...");
 
         SecureRandom sr = new SecureRandom();
@@ -230,14 +232,12 @@ public class Part3 {
                 sr.nextBytes(data); // Fill with random data
 
                 // Write the data to the file
-                try (FileOutputStream fos = new FileOutputStream(INPUT_FILES[i])) {
-                    fos.write(data);
-                }
+                try (FileOutputStream fos = new FileOutputStream(INPUT_FILES[i])) {fos.write(data);}
             }
             LOG.info("Plaintext files have been created and populated successfully.");
         } catch (IOException e) {
-            LOG.log(Level.SEVERE, "Error creating or writing to temporary files: " + e.getMessage(), e);
-            throw new RuntimeException(e);
+            LOG.log(Level.SEVERE, "Error creating or writing to temporary files.");
+            exit(1);
         }
     }
 
@@ -246,10 +246,8 @@ public class Part3 {
      */
     private static void deleteTempPlaintexts() {
         for (File file : INPUT_FILES) {
-            if (file != null && file.exists()) {
-                if (!file.delete()) {
-                    LOG.warning("Failed to delete temporary file: " + file.getAbsolutePath());
-                }
+            if (file != null && file.exists() && !file.delete()) {
+                LOG.warning("Failed to delete temporary file: " + file.getAbsolutePath());
             }
         }
     }
@@ -257,9 +255,10 @@ public class Part3 {
     /**
      * Iterates over the map entries and calls savePerformanceMetrics to save the results to results.csv
      * @param operation - encryption or decryption operation
-     * @param operationDurations -
+     * @param operationDurations - map of changing factors linked to its respective output duration for the given operation
      */
     private static void performSavePerformDur(String operation, Map<int[], Double> operationDurations) {
+        // Sorts the durations in the map using the int array key
         List<Map.Entry<int[], Double>> sortedEntries = new ArrayList<>(operationDurations.entrySet());
         sortedEntries.sort((e1, e2) -> {
             int[] id1 = e1.getKey();
@@ -273,6 +272,7 @@ public class Part3 {
             // Finally, compare by mode
             return CIPHERS[id1[2]].compareTo(CIPHERS[id2[2]]);
         });
+
         // Write the header to the csv file
         String header = String.format("%s:\nFileSize(bits),KeySize(bits),Mode,Duration(secs)\n", operation);
         writeToCSV(header.getBytes());
