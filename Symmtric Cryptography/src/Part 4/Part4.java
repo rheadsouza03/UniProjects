@@ -32,6 +32,7 @@ public class Part4 {
             System.exit(1);
         }
 
+        // Parse commandline arguments
         String ciphertextFile = args[0];
         int type = Integer.parseInt(args[2]);
 
@@ -56,11 +57,11 @@ public class Part4 {
 
         try {
             LOG.info("Reading from file...");
-            // Read ciphertext
+            // Read from encrypted file
             Path path = Paths.get("data/testCiphertexts/"+ciphertextFile);
             byte[] file = Files.readAllBytes(path);
 
-            // Extract salt and IV from the ciphertext
+            // Extract salt and IV from encrypted file
             byte[] salt = new byte[SALT_LENGTH];
             System.arraycopy(file, 0, salt, 0, SALT_LENGTH);
             LOG.info("Salt has been extracted successfully.");
@@ -69,6 +70,7 @@ public class Part4 {
             System.arraycopy(file, SALT_LENGTH, ivBytes, 0, IV_LENGTH);
             LOG.info("IV has been extracted successfully.");
 
+            // Extract ciphertext from encrypted file
             byte[] ciphertext = new byte[file.length - SALT_LENGTH - IV_LENGTH];
             System.arraycopy(file, SALT_LENGTH + IV_LENGTH, ciphertext, 0, ciphertext.length);
             LOG.info("Ciphertext has been extracted successfully.\nFile has been closed, reading complete.");
@@ -81,10 +83,10 @@ public class Part4 {
             float durationMs = endTime - startTime;
             LOG.info("Brute-forcing has stopped.");
 
-            LOG.info("Results: \n");
+            LOG.info("Results:");
             if (password != null) {
-                System.out.println("Password Found: "+password);  // Print the password as per the requirement.
-                System.out.println("Duration: "+durationMs + "ms");
+                System.out.println("    * Password Found: "+password);  // Print the password as per the requirement.
+                System.out.println("    * Duration: "+durationMs + "ms");
             } else {
                 LOG.severe("Password not found.");
                 exit(1);
