@@ -6,3 +6,4 @@
    file. So, delete the 'results.csv' file before rerunning the program.
  - These programs will need to be run via the command-line as IDEs seem to flag the multiple 
    Util classes as an error, even though they are in different folders.
+No external references were used. Mainly was an adaptation of Part1's code.
