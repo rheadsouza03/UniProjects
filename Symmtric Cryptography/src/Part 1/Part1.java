@@ -21,6 +21,7 @@ import static java.lang.System.exit;
 /**
  * Commandline based encryption and decryption program
  * @author Rhea D'Souza
+ * UID: dsouzrhea
  */
 public class Part1 {
     private static final Logger LOG = Logger.getLogger(Part1.class.getSimpleName());

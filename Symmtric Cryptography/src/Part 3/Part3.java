@@ -20,6 +20,7 @@ import static java.lang.System.exit;
 /**
  * Tests different keys, input file sizes and cipher modes and appends their timings into the results.csv file.
  * @author Rhea D'Souza
+ * UID: dsouzrhea
  */
 public class Part3 {
     private static final Logger LOG = Logger.getLogger(Part3.class.getSimpleName());

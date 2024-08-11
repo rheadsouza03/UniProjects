@@ -1,4 +1,5 @@
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -16,6 +17,7 @@ import static java.lang.System.exit;
 
 /**
  * @author Rhea D'Souza
+ * UID: dsouzrhea
  */
 public class Part4 {
     private static final Logger LOG = Logger.getLogger(Part4.class.getSimpleName());
@@ -56,7 +58,7 @@ public class Part4 {
         try {
             // Read ciphertext
             System.out.println("========================\nReading ciphertext file: \n========================");
-            Path path = Paths.get(ciphertextFile);
+            Path path = Paths.get("data/testCiphertexts/"+ciphertextFile);
             byte[] ciphertext = Files.readAllBytes(path);
 
             // Extract salt and IV from the ciphertext
@@ -74,14 +76,21 @@ public class Part4 {
 
             // Brute-force password search
             LOG.info("Brute-forcing in process...");
+
+                // Begin bruteforce and timing
             long startTime = System.currentTimeMillis();
             String password = bruteForce(charset, salt, ivBytes, actualCiphertext);
             long endTime = System.currentTimeMillis();
             float durationMs = endTime - startTime;
+
+                // Formatting durations
             String formattedDurationMs = String.format("%.2f", durationMs);
             String formattedDurationSec = String.format("%.2f", (durationMs/1000));
+
+                // Indicate that brute force has been completed
             LOG.info("Brute-force completed.");
 
+                // Show the results on the commandline
             LOG.info("Brute-force results: ");
             if (password != null) {
                 System.out.println("    *  Password: "+ password);
@@ -126,7 +135,8 @@ public class Part4 {
             byte[] decryptedText = cipher.doFinal(actualCiphertext);
 
             // Check if the decrypted text is valid (this might need adjustment based on your ciphertext content)
-            return decryptedText.length > 0;
+            String decryptedString = new String(decryptedText, StandardCharsets.UTF_8);
+            return decryptedString.startsWith("This is an example");
         } catch (Exception e) {
             return false;
         }
