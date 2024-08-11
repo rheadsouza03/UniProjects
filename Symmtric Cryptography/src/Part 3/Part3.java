@@ -36,6 +36,7 @@ public class Part3 {
     private static final int[] KEY_SIZES = {128, 192, 256}; // in bits
     private static File[] INPUT_FILES = new File[3];
     private static final int[] INPUT_FILES_SIZES = {128, 256, 512};
+    private static final int ITERATIONS = 100;
 
     /**
      * Loops through temporarily created input plaintext files, key sizes, and operation modes for encryption
@@ -102,7 +103,7 @@ public class Part3 {
     private static double[] getAverageDurations(SecretKeySpec skeySpec, File inputFile, String cipherMode, SecureRandom sr) {
         double[] durations = {0, 0};
 
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < ITERATIONS; i++) {
             // Generate a new IV for each iteration if using GCM mode
             byte[] initVector = new byte[16];
             sr.nextBytes(initVector);
@@ -118,8 +119,8 @@ public class Part3 {
             durations[1] += encAndDecDur[1];
         }
 
-        durations[0] /= 10;
-        durations[1] /= 10;
+        durations[0] /= ITERATIONS;
+        durations[1] /= ITERATIONS;
         LOG.info("Average durations for " + inputFile + " with cipher " + cipherMode + " have been computed.");
 
         return durations;
