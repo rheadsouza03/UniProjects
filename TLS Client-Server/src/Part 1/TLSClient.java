@@ -1,44 +1,49 @@
 import javax.net.ssl.*;
 import java.io.*;
 import java.security.KeyStore;
-import java.security.SecureRandom;
 
 public class TLSClient {
-    private static String host = "localhost";
-    private static final int PORT = 8443; // Ensure this matches the server's port (non-previledged)
-    private static  String truststorePath = "rootca.jks";
-    private static String truststorePassword = "capassword";
+    private static final String HOST = "localhost";
+    private static final int PORT = 8443;
+    private static final String TRUSTSTORE = "clienttruststore.jks";
+    private static final String TRUSTSTORE_PASSWORD = "trustpassword";
 
     public static void main(String[] args) {
         try {
-            // Load the CA certificate into the truststore
+            // Load Client TrustStore
             KeyStore trustStore = KeyStore.getInstance("JKS");
-            try (FileInputStream trustStoreInput = new FileInputStream(truststorePath)) {
-                trustStore.load(trustStoreInput, truststorePassword.toCharArray());
+            try (FileInputStream trustStoreIS = new FileInputStream(TRUSTSTORE)) {
+                trustStore.load(trustStoreIS, TRUSTSTORE_PASSWORD.toCharArray());
             }
 
-            // Initialize TrustManagerFactory
-            TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-            trustManagerFactory.init(trustStore);
+            // Initialize TrustManagerFactory with the TrustStore
+            TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
+            tmf.init(trustStore);
 
             // Initialize SSLContext
             SSLContext sslContext = SSLContext.getInstance("TLS");
-            sslContext.init(null, trustManagerFactory.getTrustManagers(), new SecureRandom());
+            sslContext.init(null, tmf.getTrustManagers(), null);
 
             // Create SSLSocket
-            SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();
-            try (SSLSocket sslSocket = (SSLSocket) sslSocketFactory.createSocket(host, PORT);
-                 BufferedReader reader = new BufferedReader(new InputStreamReader(sslSocket.getInputStream()));
-                 PrintWriter writer = new PrintWriter(sslSocket.getOutputStream(), true)) {
+            SSLSocketFactory ssf = sslContext.getSocketFactory();
+            try (SSLSocket sslSocket = (SSLSocket) ssf.createSocket(HOST, PORT)) {
+                sslSocket.startHandshake();
+                System.out.println("TLS Handshake completed successfully.");
 
-                // Send a message to the server
-                writer.println("Hello, Server!");
+                BufferedWriter out = new BufferedWriter(new OutputStreamWriter(sslSocket.getOutputStream()));
+                BufferedReader in = new BufferedReader(new InputStreamReader(sslSocket.getInputStream()));
 
-                // Read the response
-                String response = reader.readLine();
-                System.out.println("Received: " + response);
+                // Send message to server
+                out.write("Hello, Server!\n");
+                out.flush();
+                System.out.println("Sent to server: Hello, Server!");
+
+                // Read response from server
+                String response = in.readLine();
+                System.out.println("Received from server: " + response);
+            } catch (SSLHandshakeException e) {
+                System.err.println("SSL Handshake failed: " + e.getMessage());
             }
-
         } catch (Exception e) {
             e.printStackTrace();
         }

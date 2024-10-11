@@ -1,56 +1,52 @@
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSocket;
-import javax.net.ssl.SSLServerSocket;
-import javax.net.ssl.SSLServerSocketFactory;
+import javax.net.ssl.*;
 import java.io.*;
 import java.security.KeyStore;
 
 public class TLSServer {
-    private static final int PORT = 8443; // non-previledged port
-    private static String keystorePath = "server.jks";
-    private static String keystorePassword = "serverpassword";
+    private static final int PORT = 8443;
+    private static final String KEYSTORE_PATH = "server.jks";
+    private static final String KEYSTORE_PASSWORD = "serverpassword";
 
     public static void main(String[] args) {
         try {
-            // Load the server's private keystore and certificate
+            // Load Server KeyStore
             KeyStore keyStore = KeyStore.getInstance("JKS");
-            try (FileInputStream keyStoreInput = new FileInputStream(keystorePath)) {
-                keyStore.load(keyStoreInput, keystorePassword.toCharArray());
+            try (FileInputStream keyStoreInput = new FileInputStream(KEYSTORE_PATH)) {
+                keyStore.load(keyStoreInput, KEYSTORE_PASSWORD.toCharArray());
             }
 
-            // Initialize KeyManagerFactory
+            // Initialize KeyManagerFactory with the server KeyStore
             KeyManagerFactory keyMngFact = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-            keyMngFact.init(keyStore, keystorePassword.toCharArray());
+            keyMngFact.init(keyStore, KEYSTORE_PASSWORD.toCharArray());
 
             // Initialize SSLContext
             SSLContext sslContext = SSLContext.getInstance("TLS");
-            sslContext.init(keyMngFact.getKeyManagers(), null, new java.security.SecureRandom());
+            sslContext.init(keyMngFact.getKeyManagers(), null, null);
 
             // Create SSLServerSocket
             SSLServerSocketFactory sslServerSocketFactory = sslContext.getServerSocketFactory();
             try (SSLServerSocket sslServer = (SSLServerSocket) sslServerSocketFactory.createServerSocket(PORT)) {
                 System.out.println("TLS server started. Waiting for client, listening on port " + PORT + "...");
 
-                while(true) {
-                    try (SSLSocket sslSocket = (SSLSocket) sslServer.accept();
-                         BufferedReader reader = new BufferedReader(new InputStreamReader(sslSocket.getInputStream()));
-                         PrintWriter writer = new PrintWriter(sslSocket.getOutputStream(), true)) {
+                while (true) {
+                    try (SSLSocket clientSocket = (SSLSocket) sslServer.accept()) {
+                        System.out.println("Client connected: " + clientSocket.getInetAddress());
 
-                        System.out.println("Client connected");
+                        BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                        BufferedWriter out = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
 
                         // Read message from client
-                        String message = reader.readLine();
-                        System.out.println("Received: " + message);
+                        String message = in.readLine();
+                        System.out.println("Received from client: " + message);
 
-                        // Send response
-                        writer.println("Hello, Client!");
+                        // Send response to client
+                        out.write("Hello, Client!\n");
+                        out.flush();
                     } catch (IOException e) {
                         System.err.println("Connection error: " + e.getMessage());
                     }
                 }
             }
-
         } catch (Exception e) {
             e.printStackTrace();
         }
