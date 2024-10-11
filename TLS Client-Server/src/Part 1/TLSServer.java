@@ -7,7 +7,7 @@ import java.io.*;
 import java.security.KeyStore;
 
 public class TLSServer {
-    private static final int PORT = 443; // HTTPS port
+    private static final int PORT = 8443; // non-previledged port
     private static String keystorePath = "server.jks";
     private static String keystorePassword = "serverpassword";
 

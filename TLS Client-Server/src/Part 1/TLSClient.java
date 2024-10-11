@@ -5,7 +5,7 @@ import java.security.SecureRandom;
 
 public class TLSClient {
     private static String host = "localhost";
-    private static final int PORT = 443; // Ensure this matches the server's port (HTTPS)
+    private static final int PORT = 8443; // Ensure this matches the server's port (non-previledged)
     private static  String truststorePath = "rootca.jks";
     private static String truststorePassword = "capassword";
 
