@@ -20,7 +20,7 @@ public class TLSServer {
             keyMngFact.init(keyStore, KEYSTORE_PASSWORD.toCharArray());
 
             // Initialize SSLContext
-            SSLContext sslContext = SSLContext.getInstance("TLS");
+            SSLContext sslContext = SSLContext.getInstance("TLS"); // Can be TLSv1.2/TLSv1.3, but match client
             sslContext.init(keyMngFact.getKeyManagers(), null, null);
 
             // Create SSLServerSocket

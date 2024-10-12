@@ -21,7 +21,7 @@ public class TLSClient {
             tmf.init(trustStore);
 
             // Initialize SSLContext
-            SSLContext sslContext = SSLContext.getInstance("TLS");
+            SSLContext sslContext = SSLContext.getInstance("TLSv1.2"); // Can be TLSv1.2/TLSv1.3, but match server
             sslContext.init(null, tmf.getTrustManagers(), null);
 
             // Create SSLSocket
