@@ -15,13 +15,12 @@ public class TLSClient {
             try (FileInputStream trustStoreIS = new FileInputStream(TRUSTSTORE)) {
                 trustStore.load(trustStoreIS, TRUSTSTORE_PASSWORD.toCharArray());
             }
-
             // Initialize TrustManagerFactory with the TrustStore
             TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
             tmf.init(trustStore);
 
             // Initialize SSLContext
-            SSLContext sslContext = SSLContext.getInstance("TLSv1.2"); // Can be TLSv1.2/TLSv1.3, but match server
+            SSLContext sslContext = SSLContext.getInstance("TLS"); // Can be TLSv1.2/TLSv1.3, but match server
             sslContext.init(null, tmf.getTrustManagers(), null);
 
             // Create SSLSocket
