@@ -32,6 +32,7 @@ public class Part3 {
             "AES/ECB/PKCS5Padding",
             "AES/OFB/NoPadding",
             "AES/CFB/NoPadding",
+            "AES/CTR/NoPadding",
             "AES/GCM/NoPadding"
     };
     private static final int[] KEY_SIZES = {128, 192, 256}; // in bits
