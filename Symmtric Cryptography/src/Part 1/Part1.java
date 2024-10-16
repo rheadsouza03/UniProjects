@@ -57,7 +57,7 @@ public class Part1 {
 
         // Gets mode of Cipher
         String cipherMode = arguments.getOrDefault("mode", CIPHER);
-        if(cipherMode.equals("GCM") || cipherMode.equals("CFB") || cipherMode.equals("OFB")) {
+        if(cipherMode.equals("GCM") || cipherMode.equals("CFB") || cipherMode.equals("OFB") || cipherMode.equals("CTR")) {
             cipherMode = "AES/"+cipherMode+"/NoPadding";
         }
         else if(cipherMode.equals("CBC") || cipherMode.equals("ECB")){
